@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scalus Playground</title>
+    <meta name="description" content="Write Cardano smart contracts in Scala and compile them to Plutus in your browser." />
+  </head>
+  <body>
+    <header>
+      <h1>Scalus <span>Playground</span></h1>
+      <select id="example" aria-label="Example"></select>
+      <div class="actions">
+        <button id="check" title="Type-check (no run)">Check</button>
+        <button id="run" class="primary" title="Ctrl/Cmd+Enter">▶ Run</button>
+        <button id="share" title="Copy a link to this code (Ctrl/Cmd+S)">Share</button>
+      </div>
+    </header>
+    <main>
+      <section id="editor" aria-label="Scala source"></section>
+      <section class="output">
+        <nav class="tabs">
+          <button data-tab="console">Console</button>
+          <button data-tab="uplc">UPLC</button>
+          <button data-tab="cbor">CBOR</button>
+          <button data-tab="budget">Budget</button>
+          <button data-tab="problems">Problems <span id="problems-count"></span></button>
+        </nav>
+        <div id="tab-console" class="tab"><pre id="console-text"></pre></div>
+        <div id="tab-uplc" class="tab"></div>
+        <div id="tab-cbor" class="tab">
+          <div class="cbor-head"><span id="size"></span><button id="copy-cbor" hidden>Copy hex</button></div>
+          <pre id="cbor-text"></pre>
+        </div>
+        <div id="tab-budget" class="tab">
+          <table>
+            <thead><tr><th>Case</th><th>Result</th><th>Memory</th><th>CPU steps</th><th>Logs</th></tr></thead>
+            <tbody id="budget-body"></tbody>
+          </table>
+        </div>
+        <div id="tab-problems" class="tab"><ul id="problems-list"></ul></div>
+      </section>
+    </main>
+    <footer id="status"></footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
