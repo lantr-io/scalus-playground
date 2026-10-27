@@ -8,6 +8,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # Repository variable: base URL of a separately hosted toolchain (the folder with worker.js).
+      # When set, only the small UI is deployed. When empty, the toolchain is bundled same-origin.
+      VITE_TOOLCHAIN_URL: ${{ vars.TOOLCHAIN_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,7 +19,8 @@ jobs:
           node-version: "24.x"
           cache: npm
       - run: npm ci
-      - run: npm run fetch-toolchain
+      - if: env.VITE_TOOLCHAIN_URL == ''
+        run: npm run fetch-toolchain
       - run: npm run build
       - name: Deploy to Cloudflare Pages
         env:

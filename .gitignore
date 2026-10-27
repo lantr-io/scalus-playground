@@ -2,3 +2,4 @@ node_modules/
 dist/
 public/toolchain/
 *.tar.gz
+.env.local

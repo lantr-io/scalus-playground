@@ -1,12 +1,15 @@
 import scalus.*
+import scalus.cardano.ledger.{CardanoInfo, Utxos, Value}
+import scalus.cardano.onchain.plutus.v3.*
+import scalus.cardano.onchain.plutus.prelude.*
+import scalus.cardano.txbuilder.RedeemerPurpose.ForSpend
+import scalus.cardano.txbuilder.txBuilder
 import scalus.compiler.{Compile, Options, compileWithOptions}
-import scalus.uplc.builtin.{ByteString, Data}
+import scalus.uplc.builtin.Data
 import scalus.uplc.builtin.Data.toData
 import scalus.uplc.eval.PlutusVM
-import scalus.cardano.onchain.plutus.v3.*
-import scalus.cardano.onchain.plutus.v1.{Address, Credential, Value}
-import scalus.cardano.onchain.plutus.prelude.*
-import scalus.playground.Playground
+import scalus.playground.{Party, Playground}
+import scalus.playground.Playground.scriptContextV3
 
 /** Spending validator: the owner (datum) must sign, and the redeemer must be "Hello, World!". */
 @Compile
@@ -26,31 +29,25 @@ object HelloCardano extends Validator {
 }
 
 @main def play() =
+    given CardanoInfo = CardanoInfo.mainnet
+    given PlutusVM = PlutusVM.makePlutusV3VM()
+
     // Error traces make failures explain themselves ("Invalid redeemer"), at a cost in size.
     val compiled = Playground.v3(compileWithOptions(Options.release, HelloCardano.validate)).withErrorTraces
     Playground.show(compiled)
 
-    // Evaluate the script against a spending transaction signed by the owner.
-    given PlutusVM = PlutusVM.makePlutusV3VM()
-    val owner = PubKeyHash(ByteString.fromHex("1234567890abcdef1234567890abcdef1234567890abcdef12345678"))
-    val ownInput = TxInInfo(
-      outRef = TxOutRef(TxId(ByteString.fromHex("ab" * 32)), 0),
-      resolved = TxOut(
-        address = Address(Credential.ScriptCredential(ByteString.fromHex("cd" * 28)), Option.None),
-        value = Value.zero
-      )
-    )
-    def context(redeemer: String) = ScriptContext(
-      txInfo = TxInfo(
-        inputs = List(ownInput),
-        fee = 188021,
-        signatories = List(owner),
-        id = TxId(ByteString.fromHex("ef" * 32))
-      ),
-      redeemer = redeemer.toData,
-      scriptInfo = ScriptInfo.SpendingScript(ownInput.outRef, Option.Some(owner.toData))
-    )
+    // Alice locked 10 ada at the script, with her key hash as the datum.
+    val alice = Party.Alice
+    val locked = Playground.lockedUtxo(compiled, Value.ada(10), PubKeyHash(alice.keyHash).toData)
+
+    // Draft the transaction that spends it, and evaluate the validator against it.
     for redeemer <- Seq("Hello, World!", "Bye") do
-        val result = (compiled.program $ context(redeemer).toData).evaluateDebug
+        val tx = txBuilder
+            .spend(locked, redeemer, compiled)
+            .requireSignature(alice.keyHash)
+            .payTo(alice.address, Value.ada(10))
+            .draft
+        val context = tx.scriptContextV3(Utxos(locked), ForSpend(locked.input))
+        val result = compiled.program.$(context.toData).evaluateDebug
         Playground.budget(s"redeemer = \"$redeemer\"", result)
     println("Done. See the UPLC, CBOR and Budget tabs.")

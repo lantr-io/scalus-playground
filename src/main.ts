@@ -39,6 +39,9 @@ const editor = new EditorView({
       StreamLanguage.define(scala),
       oneDark,
       lintGutter(),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) scheduleCheck();
+      }),
       keymap.of([
         { key: "Mod-Enter", run: () => (run(), true) },
         { key: "Mod-s", run: () => (share(), true) },
@@ -140,27 +143,54 @@ function markDiagnostics(diagnostics: Diagnostic[]) {
 }
 
 // --- Compiler -----------------------------------------------------------------
+//
+// The first run is the slow one: download, cold compiler, cold linker. So we start it as soon as
+// the compiler is ready, on whatever is in the editor, and keep the result. Pressing Run on the
+// same source then shows it at once; on edited source the warm compiler and linker are fast.
+// Edits also trigger a background type-check, so errors appear without pressing anything.
 
-const toolchain = new Toolchain(new URL(`${import.meta.env.BASE_URL}toolchain/browser-ide/`, location.href).href);
-toolchain.onStatus = (text) => (statusEl.textContent = text);
-let lastDurationMs = 0;
-toolchain.onTiming = (t) => (lastDurationMs = t.durationMs);
+const toolchainBase = new URL(import.meta.env.VITE_TOOLCHAIN_URL ?? `${import.meta.env.BASE_URL}toolchain/browser-ide/`, location.href);
+const toolchain = new Toolchain(new URL("assets/manifest.json", toolchainBase).href);
+let foreground = false;
+toolchain.onStatus = (text) => {
+  if (foreground) statusEl.textContent = text;
+};
 
-statusEl.textContent = "Loading the Scala compiler (first visit downloads ~140 MB)…";
+const source = () => editor.state.doc.toString();
+const files = (main: string) => [
+  { path: "Playground.scala", content: playgroundPrelude },
+  { path: MainFile, content: main },
+];
+
+/** Run results by source text. A run in progress is cached too, so Run can await it. */
+const runs = new Map<string, Promise<Result>>();
+function runSource(main: string): Promise<Result> {
+  let result = runs.get(main);
+  if (!result) {
+    result = toolchain.run(files(main));
+    runs.set(main, result);
+    result.catch(() => runs.delete(main));
+    if (runs.size > 20) runs.delete(runs.keys().next().value!);
+  }
+  return result;
+}
+
+statusEl.textContent = "Loading the Scala compiler (the first visit downloads ~140 MB)…";
 toolchain.ready.then(
   () => {
-    statusEl.textContent = "Ready. Run with Ctrl/Cmd+Enter.";
     setBusy(false);
+    statusEl.textContent = "Preparing: compiling the example in the background…";
+    const warmed = source();
+    runSource(warmed).then(
+      (r) => {
+        if (source() === warmed) markDiagnostics(r.diagnostics);
+        if (!foreground) statusEl.textContent = "Ready. Run with Ctrl/Cmd+Enter.";
+      },
+      () => {},
+    );
   },
   (e) => (statusEl.textContent = `Compiler failed to start: ${e.message}`),
 );
-
-function files() {
-  return [
-    { path: "Playground.scala", content: playgroundPrelude },
-    { path: MainFile, content: editor.state.doc.toString() },
-  ];
-}
 
 function setBusy(busy: boolean) {
   runButton.disabled = checkButton.disabled = busy;
@@ -169,24 +199,54 @@ function setBusy(busy: boolean) {
 async function execute(action: "run" | "check") {
   if (runButton.disabled) return;
   setBusy(true);
+  foreground = true;
+  const main = source();
+  const cached = action === "run" && runs.has(main);
   statusEl.textContent = action === "run" ? "Compiling and running…" : "Checking…";
   try {
-    const result = await (action === "run" ? toolchain.run(files()) : toolchain.check(files()));
-    markDiagnostics(result.diagnostics);
-    const took = `${(lastDurationMs / 1000).toFixed(2)} s`;
-    statusEl.textContent = result.ok ? `Done in ${took}.` : `Failed after ${took}. See Problems or Console.`;
+    const result = await (action === "run" ? runSource(main) : toolchain.check(files(main)));
+    if (source() === main) markDiagnostics(result.diagnostics);
+    const took = `${(result.durationMs / 1000).toFixed(2)} s`;
+    statusEl.textContent = !result.ok
+      ? `Failed after ${took}. See Problems or Console.`
+      : cached
+        ? `Done (compiled in the background in ${took}).`
+        : `Done in ${took}.`;
     render(result, action === "run" ? parseOutput(result.output) : { console: result.ok ? "No errors." : "", budget: [] });
   } catch (e) {
     statusEl.textContent = "The compiler crashed. Reload the page to restart it.";
     $("console-text").textContent = (e as Error).message;
     showTab("console");
   } finally {
+    foreground = false;
     setBusy(false);
   }
 }
 const run = () => execute("run");
 runButton.addEventListener("click", run);
 checkButton.addEventListener("click", () => execute("check"));
+
+// Background type-check after the user stops typing. Only the latest source is checked.
+let checkTimer: number | undefined;
+let checking = false;
+function scheduleCheck() {
+  clearTimeout(checkTimer);
+  checkTimer = window.setTimeout(backgroundCheck, 800);
+}
+async function backgroundCheck() {
+  if (checking) return scheduleCheck();
+  const main = source();
+  if (runs.has(main)) return;
+  checking = true;
+  try {
+    const result = await toolchain.check(files(main));
+    if (source() === main) markDiagnostics(result.diagnostics);
+  } catch {
+    // A crash shows up on the next Run.
+  } finally {
+    checking = false;
+  }
+}
 
 // --- Share --------------------------------------------------------------------
 

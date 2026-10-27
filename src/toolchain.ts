@@ -21,25 +21,28 @@ export interface Result {
   ok: boolean;
   output: string;
   diagnostics: Diagnostic[];
-}
-
-export interface Timing {
   durationMs: number;
 }
 
 type Pending = { resolve: (r: Result) => void; reject: (e: Error) => void };
 
+/** One worker, one request at a time: requests queue up in call order. */
 export class Toolchain {
   readonly ready: Promise<void>;
   onStatus: (text: string) => void = () => {};
-  onTiming: (timing: Timing) => void = () => {};
 
   private worker: Worker;
   private pending: Pending | null = null;
+  private lastDurationMs = 0;
+  private queue: Promise<unknown> = Promise.resolve();
 
-  constructor(baseUrl: string) {
-    this.worker = new Worker(new URL("worker.js", baseUrl), { type: "module" });
+  /** @param manifestUrl absolute URL of the toolchain's assets/manifest.json, on any CORS-enabled origin */
+  constructor(manifestUrl: string) {
+    const shim = new URL(`${import.meta.env.BASE_URL}toolchain-worker.js`, location.href);
+    shim.searchParams.set("manifest", manifestUrl);
+    this.worker = new Worker(shim, { type: "module" });
     this.ready = new Promise((resolve, reject) => {
+      this.worker.addEventListener("error", (e) => reject(new Error(e.message || "The compiler worker failed to load.")));
       this.worker.addEventListener("message", (event) => {
         const m = event.data;
         switch (m.type) {
@@ -56,19 +59,21 @@ export class Toolchain {
             break;
           }
           case "compile-duration":
-            this.onTiming({ durationMs: m.durationMs });
+            this.lastDurationMs = m.durationMs;
             break;
           case "run-result":
           case "awaiting-input":
-            this.settle((p) => p.resolve({ ok: m.ok ?? true, output: m.output ?? "", diagnostics: m.diagnostics ?? [] }));
+            this.settle((p) =>
+              p.resolve({ ok: m.ok ?? true, output: m.output ?? "", diagnostics: m.diagnostics ?? [], durationMs: this.lastDurationMs }),
+            );
             break;
           case "compile-result":
-            this.onTiming({ durationMs: m.durationMs });
             this.settle((p) =>
               p.resolve({
                 ok: m.ok,
                 output: m.error ?? (m.compilerLog ?? []).join("\n"),
                 diagnostics: m.diagnostics ?? [],
+                durationMs: m.durationMs,
               }),
             );
             break;
@@ -79,17 +84,22 @@ export class Toolchain {
 
   /** Compiles, links and runs the `@main` entry point. */
   run(files: SourceFile[]): Promise<Result> {
-    return this.request({ type: "run", files });
+    return this.enqueue({ type: "run", files });
   }
 
-  /** Type-checks and compiles without running. */
+  /** Type-checks and compiles without linking or running. */
   check(files: SourceFile[]): Promise<Result> {
-    return this.request({ type: "compile", files });
+    return this.enqueue({ type: "compile", files });
   }
 
-  private async request(message: object): Promise<Result> {
+  private enqueue(message: object): Promise<Result> {
+    const result = this.queue.then(() => this.send(message));
+    this.queue = result.catch(() => {});
+    return result;
+  }
+
+  private async send(message: object): Promise<Result> {
     await this.ready;
-    if (this.pending) throw new Error("The compiler is busy.");
     return new Promise((resolve, reject) => {
       this.pending = { resolve, reject };
       this.worker.postMessage(message);
