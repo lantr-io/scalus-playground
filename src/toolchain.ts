@@ -1,5 +1,5 @@
 // Client for the Scala.js/Wasm compiler worker shipped in the Scalus toolchain release.
-// Protocol: lantr-io/scala3 branch scalus-wasm, compiler/src-sjs/dotty/tools/browseride/BrowserIDEWorker.scala
+// Protocol: lantr-io/scalus-scala3-wasm branch scalus-wasm, compiler/src-sjs/dotty/tools/browseride/BrowserIDEWorker.scala
 
 export interface SourceFile {
   path: string;

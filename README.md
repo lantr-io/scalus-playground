@@ -41,7 +41,7 @@ link. It runs in a Web Worker, and its output is not shown until you press Run.
 
 ## Toolchain
 
-The compiler comes from [lantr-io/scala3](https://github.com/lantr-io/scala3/tree/scalus-wasm),
+The compiler comes from [lantr-io/scalus-scala3-wasm](https://github.com/lantr-io/scalus-scala3-wasm/tree/scalus-wasm),
 branch `scalus-wasm`: Sébastien Doeraene and Patrick Gilliard's Scala.js build of the Scala 3
 compiler (via [univalence-xyz/scala3-on-wasm](https://github.com/univalence-xyz/scala3-on-wasm)),
 plus the Scalus plugin. Each release pins a Scalus commit. `TOOLCHAIN_VERSION` picks the release.
@@ -67,6 +67,6 @@ provides `Playground.v3`, `Playground.lockedUtxo`, `tx.scriptContextV3`, `Party`
 ## Deploy
 
 Pushing to `main` builds the UI and deploys it to GitHub Pages. The toolchain is not part of this
-site: the build points at `https://lantr.io/scala3/toolchain/<TOOLCHAIN_VERSION>/browser-ide/`,
-which lantr-io/scala3 publishes for each `scalus-toolchain-v*` tag. To move to a new toolchain,
+site: the build points at `https://lantr.io/scalus-scala3-wasm/toolchain/<TOOLCHAIN_VERSION>/browser-ide/`,
+which lantr-io/scalus-scala3-wasm publishes for each `scalus-toolchain-v*` tag. To move to a new toolchain,
 change `TOOLCHAIN_VERSION`.

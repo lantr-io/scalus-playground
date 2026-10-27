@@ -29,13 +29,13 @@ jobs:
       - id: pages
         uses: actions/configure-pages@v5
       - run: npm ci
-      # Only the UI is deployed (~0.5 MB). The toolchain is served from lantr-io/scala3's Pages site,
+      # Only the UI is deployed (~0.5 MB). The toolchain is served from lantr-io/scalus-scala3-wasm's Pages site,
       # in the version TOOLCHAIN_VERSION names.
       - name: Build
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}/
         run: |
-          export VITE_TOOLCHAIN_URL="https://lantr.io/scala3/toolchain/$(cat TOOLCHAIN_VERSION)/browser-ide/"
+          export VITE_TOOLCHAIN_URL="https://lantr.io/scalus-scala3-wasm/toolchain/$(cat TOOLCHAIN_VERSION)/browser-ide/"
           npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
