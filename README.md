@@ -45,10 +45,10 @@ branch `scalus-wasm`: Sébastien Doeraene and Patrick Gilliard's Scala.js build 
 compiler (via [univalence-xyz/scala3-on-wasm](https://github.com/univalence-xyz/scala3-on-wasm)),
 plus the Scalus plugin. Each release pins a Scalus commit. `TOOLCHAIN_VERSION` picks the release.
 
-The toolchain (~140 MB) and the UI (~0.5 MB) deploy separately. Set `VITE_TOOLCHAIN_URL` (repository
-variable `TOOLCHAIN_URL` in CI) to the folder holding the toolchain's `worker.js`, on any origin that
-sends `Access-Control-Allow-Origin`. Then UI changes deploy without touching the toolchain. Without
-it, the toolchain is fetched into `public/toolchain/` and served from the same origin.
+The toolchain (~140 MB) and the UI (~0.5 MB) deploy separately. `VITE_TOOLCHAIN_URL` names the
+folder holding the toolchain's `worker.js`, on any origin that sends `Access-Control-Allow-Origin`
+(GitHub Pages does). Without it, the UI expects the toolchain in `public/toolchain/` on the same
+origin, which is what `npm run fetch-toolchain` sets up for local development.
 
 ## Development
 
@@ -65,5 +65,7 @@ provides `Playground.v3`, `Playground.lockedUtxo`, `tx.scriptContextV3`, `Party`
 
 ## Deploy
 
-Pushing to `main` builds the site and deploys it to Cloudflare Pages (project `scalus-playground`).
-Set the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets.
+Pushing to `main` builds the UI and deploys it to GitHub Pages. The toolchain is not part of this
+site: the build points at `https://lantr.io/scala3/toolchain/<TOOLCHAIN_VERSION>/browser-ide/`,
+which lantr-io/scala3 publishes for each `scalus-toolchain-v*` tag. To move to a new toolchain,
+change `TOOLCHAIN_VERSION`.
