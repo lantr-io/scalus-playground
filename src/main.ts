@@ -119,6 +119,9 @@ exampleSelect.addEventListener("change", () => {
   const example = examples.find((e) => e.name === exampleSelect.value)!;
   selectExample(example);
   setSource(example.source);
+  // Results of the previous example would read as results of this one.
+  render({ ok: true, output: "", diagnostics: [], durationMs: 0 }, { console: "Press Run.", budget: [] });
+  showTab("console");
   history.replaceState(null, "", location.pathname);
 });
 
