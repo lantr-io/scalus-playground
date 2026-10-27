@@ -22,6 +22,13 @@ export interface Result {
   output: string;
   diagnostics: Diagnostic[];
   durationMs: number;
+  /** The worker's breakdown of this request (setup, compiler phases, link, …), in milliseconds. */
+  timings: Timing[];
+}
+
+export interface Timing {
+  name: string;
+  durationMs: number;
 }
 
 type Pending = { resolve: (r: Result) => void; reject: (e: Error) => void };
@@ -33,6 +40,7 @@ export class Toolchain {
 
   private pending: Pending | null = null;
   private lastDurationMs = 0;
+  private lastTimings: Timing[] = [];
   private queue: Promise<unknown> = Promise.resolve();
 
   /** @param manifestUrl absolute URL of the toolchain's assets/manifest.json, on any CORS-enabled origin */
@@ -83,11 +91,18 @@ export class Toolchain {
           }
           case "compile-duration":
             this.lastDurationMs = m.durationMs;
+            this.lastTimings = m.phases ?? [];
             break;
           case "run-result":
           case "awaiting-input":
             this.settle((p) =>
-              p.resolve({ ok: m.ok ?? true, output: m.output ?? "", diagnostics: m.diagnostics ?? [], durationMs: this.lastDurationMs }),
+              p.resolve({
+                ok: m.ok ?? true,
+                output: m.output ?? "",
+                diagnostics: m.diagnostics ?? [],
+                durationMs: this.lastDurationMs,
+                timings: this.lastTimings,
+              }),
             );
             break;
           case "compile-result":
@@ -97,6 +112,7 @@ export class Toolchain {
                 output: m.error ?? (m.compilerLog ?? []).join("\n"),
                 diagnostics: m.diagnostics ?? [],
                 durationMs: m.durationMs,
+                timings: m.phases ?? [],
               }),
             );
             break;

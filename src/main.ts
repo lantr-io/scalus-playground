@@ -120,7 +120,7 @@ exampleSelect.addEventListener("change", () => {
   selectExample(example);
   setSource(example.source);
   // Results of the previous example would read as results of this one.
-  render({ ok: true, output: "", diagnostics: [], durationMs: 0 }, { console: "Press Run.", budget: [] });
+  render({ ok: true, output: "", diagnostics: [], durationMs: 0, timings: [] }, { console: "Press Run.", budget: [] });
   showTab("console");
   history.replaceState(null, "", location.pathname);
 });
@@ -338,6 +338,7 @@ async function execute(action: "run" | "check") {
         ? `Done (compiled in the background in ${took}).`
         : `Done in ${took}.`;
     render(result, action === "run" ? parseOutput(result.output) : { console: result.ok ? "No errors." : "", budget: [] });
+    if (showTimings) appendTimings(result, cached);
   } catch (e) {
     statusEl.textContent = "The compiler crashed. Reload the page to restart it.";
     $("console-text").textContent = (e as Error).message;
@@ -371,6 +372,17 @@ async function backgroundCheck() {
   } finally {
     checking = false;
   }
+}
+
+// `?timings` in the URL appends the worker's breakdown of each run to the Console tab.
+const showTimings = new URLSearchParams(location.search).has("timings");
+function appendTimings(result: Result, cached: boolean) {
+  const rows = result.timings
+    .filter((t) => t.durationMs >= 1)
+    .map((t) => `${(t.durationMs / 1000).toFixed(2).padStart(7)} s  ${t.name}`);
+  const note = cached ? " (compiled in the background)" : "";
+  $("console-text").textContent += `\n\n--- timings${note}: ${(result.durationMs / 1000).toFixed(2)} s ---\n${rows.join("\n")}`;
+  console.table(result.timings);
 }
 
 // --- Share --------------------------------------------------------------------
