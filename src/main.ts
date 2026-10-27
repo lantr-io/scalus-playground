@@ -147,7 +147,9 @@ function setView(view: EditorView, text: string) {
   view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
 }
 
+let activeTab = "console";
 function showTab(name: string) {
+  activeTab = name;
   for (const b of document.querySelectorAll<HTMLButtonElement>(".tabs button"))
     b.classList.toggle("active", b.dataset.tab === name);
   for (const p of document.querySelectorAll<HTMLElement>(".tab"))
@@ -182,7 +184,8 @@ function render(result: Result, parsed: ParsedOutput) {
   else if (!result.ok) {
     $("console-text").textContent = result.output;
     showTab("console");
-  } else showTab(parsed.uplc ? "uplc" : "console");
+  } else if (activeTab === "problems") showTab("console"); // nothing left to show there
+  // Otherwise a successful run keeps the tab the user is looking at.
 }
 
 $("copy-cbor").addEventListener("click", () => navigator.clipboard.writeText($("cbor-text").textContent ?? ""));
