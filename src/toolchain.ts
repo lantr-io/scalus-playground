@@ -31,17 +31,40 @@ export class Toolchain {
   readonly ready: Promise<void>;
   onStatus: (text: string) => void = () => {};
 
-  private worker: Worker;
   private pending: Pending | null = null;
   private lastDurationMs = 0;
   private queue: Promise<unknown> = Promise.resolve();
 
   /** @param manifestUrl absolute URL of the toolchain's assets/manifest.json, on any CORS-enabled origin */
-  constructor(manifestUrl: string) {
+  constructor(private readonly manifestUrl: string) {
+    let started!: () => void;
+    const start = new Promise<void>((resolve) => (started = resolve));
+    this.startWorker = started;
+    this.ready = start.then(() => this.launch());
+  }
+
+  private startWorker: () => void;
+  private worker!: Worker;
+
+  /** Starts the worker. Requests made before this wait for it. */
+  start(): void {
+    this.startWorker();
+  }
+
+  /** Replaces a crashed worker with a fresh one; the toolchain files come from the browser cache. */
+  restart(): Promise<void> {
+    this.worker.terminate();
+    this.settle((p) => p.reject(new Error("The compiler was restarted.")));
+    const ready = this.launch();
+    (this as { ready: Promise<void> }).ready = ready;
+    return ready;
+  }
+
+  private launch(): Promise<void> {
     const shim = new URL(`${import.meta.env.BASE_URL}toolchain-worker.js`, location.href);
-    shim.searchParams.set("manifest", manifestUrl);
+    shim.searchParams.set("manifest", this.manifestUrl);
     this.worker = new Worker(shim, { type: "module" });
-    this.ready = new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       this.worker.addEventListener("error", (e) => reject(new Error(e.message || "The compiler worker failed to load.")));
       this.worker.addEventListener("message", (event) => {
         const m = event.data;

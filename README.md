@@ -19,11 +19,12 @@ Early prototype.
 
 | Works | Not yet |
 |---|---|
-| Compile `@Compile` validators and `compileWithOptions` expressions | `PlutusV3.compile` (needs macro expansion in the browser) – use `Playground.v3` |
+| `PlutusV3.compile`, `@Compile` validators | `PlutusV3.compile` of code using `derives FromData` types from the same program – use `compileWithOptions` + `Playground.v3` (see the HTLC example) |
 | `TxBuilder` draft transactions and their script contexts | Scalus tests |
 | UPLC, double-CBOR hex, script size | Formatting |
 | Evaluate with PlutusVM, budget table | Firefox and Safari not tested (needs Wasm JSPI) |
-| Errors as editor squiggles, live type-checking, share links | |
+| Errors as editor squiggles, live type-checking, share links | The compiler can crash after many runs; the page restarts it and retries |
+| Export as a scala-cli project (runs on the JVM with published Scalus) | |
 
 Needs a browser with WebAssembly GC, exception handling and JSPI: Chrome or Edge 137+.
 

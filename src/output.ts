@@ -1,6 +1,7 @@
 // Splits program output into the sections written by scalus.playground.Playground (src/scala/Playground.scala).
 
-const Marker = "@@playground:";
+// Lines `=== <section> ===` ... `=== end ===`.
+const SectionLine = /^=== (\w+) ===$/;
 
 export interface BudgetRow {
   label: string;
@@ -25,8 +26,9 @@ export function parseOutput(text: string): ParsedOutput {
   let body: string[] = [];
 
   for (const line of text.split("\n")) {
-    if (line.startsWith(Marker)) {
-      const name = line.slice(Marker.length);
+    const marker = SectionLine.exec(line);
+    if (marker) {
+      const name = marker[1];
       if (name === "end" && section) {
         store(result, section, body.join("\n"));
         section = null;

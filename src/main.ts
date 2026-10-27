@@ -8,18 +8,52 @@ import { keymap } from "@codemirror/view";
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 
 import { Toolchain, type Diagnostic, type Result } from "./toolchain";
+import { prefetch, toolchainFiles } from "./prefetch";
+import { scalaCliProject, zip } from "./export";
 import { parseOutput, type ParsedOutput } from "./output";
 import { uplc } from "./uplc";
 import playgroundPrelude from "./scala/Playground.scala?raw";
 import helloCardano from "./scala/HelloCardano.scala?raw";
+import htlc from "./scala/Htlc.scala?raw";
+import mintingPolicy from "./scala/MintingPolicy.scala?raw";
 import expression from "./scala/Expression.scala?raw";
 import "./style.css";
 
 const MainFile = "Main.scala";
-const examples: Record<string, string> = {
-  "Hello Cardano validator": helloCardano,
-  "Compile an expression": expression,
-};
+
+interface Example {
+  name: string;
+  source: string;
+  /** The scalus.org page that explains it. */
+  docs: string;
+  description: string;
+}
+const examples: Example[] = [
+  {
+    name: "Hello Cardano validator",
+    source: helloCardano,
+    docs: "https://scalus.org/docs/smart-contracts/validators",
+    description: "A spending validator: the owner must sign and say hello.",
+  },
+  {
+    name: "Hash time-locked contract (HTLC)",
+    source: htlc,
+    docs: "https://scalus.org/docs/smart-contracts/htlc-tutorial",
+    description: "Claim with a secret before a timeout, or take back after it.",
+  },
+  {
+    name: "Minting policy",
+    source: mintingPolicy,
+    docs: "https://scalus.org/docs/transactions/minting-burning-assets",
+    description: "Only the admin can mint; a parameterized policy.",
+  },
+  {
+    name: "The smallest script",
+    source: expression,
+    docs: "https://scalus.org/docs/smart-contracts/evaluating-script",
+    description: "Compile an expression to UPLC and evaluate it.",
+  },
+];
 
 // Light or dark, following the system setting, as scalus.org does.
 const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
@@ -69,9 +103,22 @@ function initialSource(): string {
   return (hash && decompressFromEncodedURIComponent(hash)) || helloCardano;
 }
 
-for (const name of Object.keys(examples)) exampleSelect.add(new Option(name, name));
+const learnMore = $<HTMLAnchorElement>("learn-more");
+for (const example of examples) exampleSelect.add(new Option(example.name, example.name));
+function selectExample(example: Example | undefined) {
+  learnMore.hidden = !example;
+  if (example) {
+    exampleSelect.value = example.name;
+    learnMore.href = example.docs;
+    learnMore.title = example.description;
+  }
+}
+// A shared link shows its own code, so no example is selected then.
+selectExample(new URLSearchParams(location.hash.slice(1)).has("code") ? undefined : examples[0]);
 exampleSelect.addEventListener("change", () => {
-  setSource(examples[exampleSelect.value]);
+  const example = examples.find((e) => e.name === exampleSelect.value)!;
+  selectExample(example);
+  setSource(example.source);
   history.replaceState(null, "", location.pathname);
 });
 
@@ -182,27 +229,53 @@ function runSource(main: string): Promise<Result> {
   if (!result) {
     result = toolchain.run(files(main));
     runs.set(main, result);
-    result.catch(() => runs.delete(main));
+    // Keep successes only: a failure may be a crash or an interrupted download, so Run retries it.
+    result.then((r) => r.ok || runs.delete(main), () => runs.delete(main));
     if (runs.size > 20) runs.delete(runs.keys().next().value!);
   }
   return result;
 }
 
-statusEl.textContent = "Loading the Scala compiler (the first visit downloads ~140 MB)…";
+// Download the toolchain with visible progress, then start the compiler on the cached files.
+const downloadBar = $<HTMLProgressElement>("download");
+const mb = (bytes: number) => (bytes / 2 ** 20).toFixed(0);
+statusEl.textContent = "Loading the Scala compiler…";
+const toolchainDownload = toolchainFiles(manifestUrl);
+toolchainDownload
+  .then(({ urls, sizes }) => {
+    downloadBar.hidden = false;
+    return prefetch(urls, sizes, ({ loaded, total }) => {
+      downloadBar.max = total;
+      downloadBar.value = loaded;
+      statusEl.textContent = `Downloading the Scala compiler: ${mb(loaded)} of ${mb(total)} MB (once; later visits use the browser cache)…`;
+    });
+  })
+  .catch((e) => console.warn("Prefetch failed; the compiler fetches its files itself.", e))
+  .finally(() => {
+    downloadBar.hidden = true;
+    statusEl.textContent = "Starting the Scala compiler…";
+    toolchain.start();
+  });
+
 // `PlutusV3.compile` is a macro. The worker expands macros by linking their Scala.js IR into the
 // compiler, so it needs the Scalus jar's IR. The jar is on the compile classpath already, so the
 // browser has it cached.
-async function importScalusMacros(manifestUrl: string) {
-  const manifest = await (await fetch(manifestUrl, { cache: "no-store" })).json();
+async function importScalusMacros() {
+  const { manifest } = await toolchainDownload;
   const entry = manifest.classpath.find((e: { path: string }) => /\/scalus_sjs1_3-[^/]*\.jar$/.test(e.path));
   if (!entry) throw new Error("The toolchain has no Scalus jar.");
   showScalusVersion(entry.path.match(/scalus_sjs1_3-(.+)\.jar$/)[1]);
   const bytes = new Uint8Array(await (await fetch(new URL(entry.url, manifestUrl))).arrayBuffer());
   await toolchain.importMacros("scalus-macros.zip", bytes);
 }
-const macrosReady = importScalusMacros(manifestUrl);
+const macrosReady = importScalusMacros();
+
+// The Scalus release the export depends on: the toolchain's version when it is a release.
+// Snapshot builds fall back to the release they were built after.
+let exportScalusVersion = "1.4.1";
 
 function showScalusVersion(version: string) {
+  if (/^\d+\.\d+\.\d+$/.test(version)) exportScalusVersion = version;
   const badge = $<HTMLAnchorElement>("version");
   badge.textContent = `Scalus ${version}`;
   // Released versions are git tags; snapshot builds have no tag to point at.
@@ -241,7 +314,24 @@ async function execute(action: "run" | "check") {
   const cached = action === "run" && runs.has(main);
   statusEl.textContent = action === "run" ? "Compiling and running…" : "Checking…";
   try {
-    const result = await (action === "run" ? runSource(main) : toolchain.check(files(main)));
+    const attempt = async () => {
+      const r = await (action === "run" ? runSource(main) : toolchain.check(files(main)));
+      // The worker reports some internal failures as a result rather than an error.
+      if (!r.ok && r.output.startsWith("An unhandled exception was thrown in the compiler")) throw new Error(r.output);
+      return r;
+    };
+    let result: Result;
+    try {
+      result = await attempt();
+    } catch (crash) {
+      // The browser compiler sometimes crashes after many runs in one session. Start a fresh one
+      // (its files are cached) and try once more.
+      console.warn("Compiler crashed; restarting it.", crash);
+      statusEl.textContent = "The compiler crashed; restarting it…";
+      await toolchain.restart();
+      await importScalusMacros();
+      result = await attempt();
+    }
     if (source() === main) markDiagnostics(result.diagnostics);
     const took = `${(result.durationMs / 1000).toFixed(2)} s`;
     statusEl.textContent = !result.ok
@@ -293,6 +383,16 @@ function share() {
   navigator.clipboard.writeText(location.href).then(() => (statusEl.textContent = "Link copied to clipboard."));
 }
 shareButton.addEventListener("click", share);
+
+$("export").addEventListener("click", () => {
+  const project = scalaCliProject(exportScalusVersion, source(), playgroundPrelude);
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(zip(project));
+  link.download = "scalus-playground.zip";
+  link.click();
+  URL.revokeObjectURL(link.href);
+  statusEl.textContent = `Exported a scala-cli project for Scalus ${exportScalusVersion}. Unzip it and run: scala-cli run .`;
+});
 
 setBusy(true);
 showTab("console");

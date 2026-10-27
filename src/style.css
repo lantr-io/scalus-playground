@@ -48,6 +48,8 @@ header { display: flex; align-items: center; gap: 12px; height: 64px; padding: 0
   border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px;
 }
 .badge:hover { color: var(--text); }
+.learn { font-size: 14px; color: var(--muted); text-decoration: none; white-space: nowrap; }
+.learn:hover { color: var(--text); }
 .actions { margin-left: auto; display: flex; gap: 8px; }
 .links { display: flex; align-items: center; gap: 14px; margin-left: 8px; }
 .links a { color: var(--muted); text-decoration: none; font-size: 14px; display: flex; }
@@ -86,7 +88,8 @@ tr.fail td:nth-child(2) { color: var(--fail); }
 #problems-list li.error { border-left: 3px solid var(--fail); }
 #problems-list li.warning { border-left: 3px solid #d97706; }
 
-footer { padding: 6px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+footer { display: flex; align-items: center; gap: 12px; padding: 6px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+#download { flex: 0 1 240px; height: 6px; accent-color: var(--accent); }
 
 @media (max-width: 900px) {
   .links, .badge { display: none; }

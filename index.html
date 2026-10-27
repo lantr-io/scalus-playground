@@ -17,10 +17,12 @@
       <span class="product">Playground</span>
       <a id="version" class="badge" href="https://github.com/scalus3/scalus/releases" title="Scalus version used by this playground" hidden></a>
       <select id="example" aria-label="Example"></select>
+      <a id="learn-more" class="learn" href="https://scalus.org/docs" target="_blank" rel="noopener" hidden>Learn more ↗</a>
       <div class="actions">
         <button id="check" title="Type-check (no run)">Check</button>
         <button id="run" class="primary" title="Ctrl/Cmd+Enter">▶ Run</button>
         <button id="share" title="Copy a link to this code (Ctrl/Cmd+S)">Share</button>
+        <button id="export" title="Download as a scala-cli project that runs on the JVM">Export</button>
       </div>
       <nav class="links" aria-label="Scalus">
         <a href="https://scalus.org/docs">Documentation</a>
@@ -57,7 +59,7 @@
         <div id="tab-problems" class="tab"><ul id="problems-list"></ul></div>
       </section>
     </main>
-    <footer id="status"></footer>
+    <footer><span id="status"></span><progress id="download" value="0" max="1" hidden></progress></footer>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

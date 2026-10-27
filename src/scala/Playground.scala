@@ -4,11 +4,14 @@ import scalus.cardano.address.{Network, ShelleyAddress}
 import scalus.cardano.address.ShelleyDelegationPart.Null
 import scalus.cardano.address.ShelleyPaymentPart.Key
 import scalus.cardano.ledger.*
-import scalus.cardano.onchain.plutus.v3
+import scalus.cardano.onchain.plutus.v3 as onchainV3 // Playground.v3 below would shadow `v3`
 import scalus.cardano.txbuilder.{RedeemerManagement, RedeemerPurpose}
+import scalus.compiler.Options
+import scalus.compiler.sir.SIR
 import scalus.uplc.{CompiledPlutus, PlutusV3}
 import scalus.uplc.builtin.{Builtins, ByteString, Data}
 import scalus.uplc.eval.Result
+import scalus.uplc.transform.V3Optimizer
 
 /** A named party with a deterministic key hash, for building draft transactions.
   *
@@ -25,7 +28,22 @@ object Party:
 
 /** Helpers for play.scalus.org. Output written through `section` lands in its own tab in the UI. */
 object Playground:
-    private val Marker = "@@playground:"
+    // Section markers: the playground UI splits output into tabs on them; in a terminal they read
+    // as headings.
+
+    /** Wraps SIR from `scalus.compiler.compileWithOptions` as a Plutus V3 script, like
+      * `PlutusV3.compile` does.
+      *
+      * Needed only where `PlutusV3.compile` cannot expand in the browser yet: when the compiled code
+      * uses a `derives FromData` / `ToData` type from the same program.
+      */
+    def v3(sir: SIR, options: Options): PlutusV3[Unit] =
+        PlutusV3(
+          () => (),
+          sir,
+          options,
+          new V3Optimizer(options.cseIterations, options.cceEnabled, options.letChainRegroup)
+        )
 
     /** A UTxO locked at the script's address, as if an earlier transaction had created it. */
     def lockedUtxo(compiled: CompiledPlutus[?], value: Value, datum: Data, index: Int = 0)(using
@@ -40,12 +58,12 @@ object Playground:
         /** The V3 script context the validator sees for `purpose` in this transaction. */
         def scriptContextV3(utxos: Utxos, purpose: RedeemerPurpose)(using
             env: CardanoInfo
-        ): v3.ScriptContext =
+        ): onchainV3.ScriptContext =
             val index = RedeemerManagement.indexFor(tx, purpose)
             PlutusScriptEvaluator
                 .buildScriptContexts(tx, utxos, env.slotConfig, env.majorProtocolVersion)
                 .collectFirst {
-                    case (r, sc: v3.ScriptContext) if r.tag == purpose.redeemerTag && r.index == index => sc
+                    case (r, sc: onchainV3.ScriptContext) if r.tag == purpose.redeemerTag && r.index == index => sc
                 }
                 .getOrElse(throw new NoSuchElementException(s"No V3 script context for $purpose"))
 
@@ -64,6 +82,6 @@ object Playground:
         )
 
     private def section(name: String)(body: => Unit): Unit =
-        println(s"$Marker$name")
+        println(s"=== $name ===")
         body
-        println(s"${Marker}end")
+        println("=== end ===")
