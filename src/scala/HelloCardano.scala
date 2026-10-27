@@ -4,9 +4,10 @@ import scalus.cardano.onchain.plutus.v3.*
 import scalus.cardano.onchain.plutus.prelude.*
 import scalus.cardano.txbuilder.RedeemerPurpose.ForSpend
 import scalus.cardano.txbuilder.txBuilder
-import scalus.compiler.{Compile, Options, compileWithOptions}
+import scalus.compiler.{Compile, Options}
 import scalus.uplc.builtin.Data
 import scalus.uplc.builtin.Data.toData
+import scalus.uplc.PlutusV3
 import scalus.uplc.eval.PlutusVM
 import scalus.playground.{Party, Playground}
 import scalus.playground.Playground.scriptContextV3
@@ -29,11 +30,12 @@ object HelloCardano extends Validator {
 }
 
 @main def play() =
+    given Options = Options.release
     given CardanoInfo = CardanoInfo.mainnet
     given PlutusVM = PlutusVM.makePlutusV3VM()
 
     // Error traces make failures explain themselves ("Invalid redeemer"), at a cost in size.
-    val compiled = Playground.v3(compileWithOptions(Options.release, HelloCardano.validate)).withErrorTraces
+    val compiled = PlutusV3.compile(HelloCardano.validate).withErrorTraces
     Playground.show(compiled)
 
     // Alice locked 10 ada at the script, with her key hash as the datum.

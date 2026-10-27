@@ -67,6 +67,11 @@ export class Toolchain {
               p.resolve({ ok: m.ok ?? true, output: m.output ?? "", diagnostics: m.diagnostics ?? [], durationMs: this.lastDurationMs }),
             );
             break;
+          case "macro-import-result":
+            this.settle((p) =>
+              m.ok ? p.resolve({ ok: true, output: m.output, diagnostics: [], durationMs: 0 }) : p.reject(new Error(m.output)),
+            );
+            break;
           case "compile-result":
             this.settle((p) =>
               p.resolve({
@@ -90,6 +95,11 @@ export class Toolchain {
   /** Type-checks and compiles without linking or running. */
   check(files: SourceFile[]): Promise<Result> {
     return this.enqueue({ type: "compile", files });
+  }
+
+  /** Registers Scala.js IR that implements macros (a jar or zip of .sjsir) for in-browser expansion. */
+  importMacros(name: string, bytes: Uint8Array): Promise<Result> {
+    return this.enqueue({ type: "import-macro-artifact", files: [{ name, bytes }] });
   }
 
   private enqueue(message: object): Promise<Result> {

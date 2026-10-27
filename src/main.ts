@@ -150,7 +150,8 @@ function markDiagnostics(diagnostics: Diagnostic[]) {
 // Edits also trigger a background type-check, so errors appear without pressing anything.
 
 const toolchainBase = new URL(import.meta.env.VITE_TOOLCHAIN_URL ?? `${import.meta.env.BASE_URL}toolchain/browser-ide/`, location.href);
-const toolchain = new Toolchain(new URL("assets/manifest.json", toolchainBase).href);
+const manifestUrl = new URL("assets/manifest.json", toolchainBase).href;
+const toolchain = new Toolchain(manifestUrl);
 let foreground = false;
 toolchain.onStatus = (text) => {
   if (foreground) statusEl.textContent = text;
@@ -176,10 +177,23 @@ function runSource(main: string): Promise<Result> {
 }
 
 statusEl.textContent = "Loading the Scala compiler (the first visit downloads ~140 MB)…";
+// `PlutusV3.compile` is a macro. The worker expands macros by linking their Scala.js IR into the
+// compiler, so it needs the Scalus jar's IR. The jar is on the compile classpath already, so the
+// browser has it cached.
+async function importScalusMacros(manifestUrl: string) {
+  const manifest = await (await fetch(manifestUrl, { cache: "no-store" })).json();
+  const entry = manifest.classpath.find((e: { path: string }) => /\/scalus_sjs1_3-[^/]*\.jar$/.test(e.path));
+  if (!entry) throw new Error("The toolchain has no Scalus jar.");
+  const bytes = new Uint8Array(await (await fetch(new URL(entry.url, manifestUrl))).arrayBuffer());
+  await toolchain.importMacros("scalus-macros.zip", bytes);
+}
+const macrosReady = importScalusMacros(manifestUrl);
+
 toolchain.ready.then(
-  () => {
+  async () => {
     setBusy(false);
     statusEl.textContent = "Preparing: compiling the example in the background…";
+    await macrosReady.catch((e) => console.error("Scalus macros unavailable:", e));
     const warmed = source();
     runSource(warmed).then(
       (r) => {
