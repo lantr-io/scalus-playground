@@ -5,7 +5,8 @@ import scalus.cardano.onchain.plutus.v3.*
 import scalus.cardano.onchain.plutus.prelude.*
 import scalus.cardano.txbuilder.RedeemerPurpose.ForSpend
 import scalus.cardano.txbuilder.txBuilder
-import scalus.compiler.{Compile, Options, compileWithOptions}
+import scalus.compiler.{Compile, Options}
+import scalus.uplc.PlutusV3
 import scalus.uplc.builtin.{ByteString, Data, FromData, ToData}
 import scalus.uplc.builtin.Builtins.sha3_256
 import scalus.uplc.builtin.Data.toData
@@ -55,11 +56,7 @@ object HtlcValidator extends Validator {
     given CardanoInfo = CardanoInfo.mainnet
     given PlutusVM = PlutusVM.makePlutusV3VM()
 
-    // On the JVM this is `PlutusV3.compile(HtlcValidator.validate)`. In the browser that macro cannot
-    // expand yet when the code uses types with derived FromData/ToData (Config, Action), so the
-    // example calls the Scalus compiler plugin directly. Same script, same result.
-    val options = summon[Options]
-    val compiled = Playground.v3(compileWithOptions(options, HtlcValidator.validate), options).withErrorTraces
+    val compiled = PlutusV3.compile(HtlcValidator.validate).withErrorTraces
     Playground.show(compiled)
 
     // Alice locks 10 ada for Bob, behind the hash of a secret, until the timeout.

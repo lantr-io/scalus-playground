@@ -6,7 +6,8 @@ export interface Progress {
   total: number;
 }
 
-/** Every file the worker fetches during startup, the first compile, and macro expansion. */
+/** Every file the worker fetches during startup and the first compile and link. (The compiler IR is
+ * left out: only user-defined macros need it, and the worker fetches it then.) */
 export async function toolchainFiles(
   manifestUrl: string,
 ): Promise<{ urls: string[]; sizes: Map<string, number>; manifest: any }> {
@@ -16,7 +17,6 @@ export async function toolchainFiles(
   const runtimeIR: string[] = Array.isArray(manifest.runtimeIR) ? manifest.runtimeIR : [manifest.runtimeIR];
   const urls = [
     new URL("main.wasm", compilerModule).href,
-    at(manifest.compilerIR), // macro expansion relinks the compiler from its IR
     ...manifest.classpath.map((e: { url: string }) => at(e.url)),
     ...runtimeIR.map(at),
   ];

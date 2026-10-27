@@ -260,18 +260,12 @@ toolchainDownload
     toolchain.start();
   });
 
-// `PlutusV3.compile` is a macro. The worker expands macros by linking their Scala.js IR into the
-// compiler, so it needs the Scalus jar's IR. The jar is on the compile classpath already, so the
-// browser has it cached.
-async function importScalusMacros() {
-  const { manifest } = await toolchainDownload;
+// The Scalus version comes from the toolchain's Scalus jar. Its macros (`PlutusV3.compile`, derived
+// FromData/ToData) are linked into the compiler, so nothing needs importing here.
+toolchainDownload.then(({ manifest }) => {
   const entry = manifest.classpath.find((e: { path: string }) => /\/scalus_sjs1_3-[^/]*\.jar$/.test(e.path));
-  if (!entry) throw new Error("The toolchain has no Scalus jar.");
-  showScalusVersion(entry.path.match(/scalus_sjs1_3-(.+)\.jar$/)[1]);
-  const bytes = new Uint8Array(await (await fetch(new URL(entry.url, manifestUrl))).arrayBuffer());
-  await toolchain.importMacros("scalus-macros.zip", bytes);
-}
-const macrosReady = importScalusMacros();
+  if (entry) showScalusVersion(entry.path.match(/scalus_sjs1_3-(.+)\.jar$/)[1]);
+});
 
 // The Scalus release the export depends on: the toolchain's version when it is a release.
 // Snapshot builds fall back to the release they were built after.
@@ -292,7 +286,6 @@ toolchain.ready.then(
   async () => {
     setBusy(false);
     statusEl.textContent = "Preparing: compiling the example in the background…";
-    await macrosReady.catch((e) => console.error("Scalus macros unavailable:", e));
     const warmed = source();
     runSource(warmed).then(
       (r) => {
@@ -332,7 +325,6 @@ async function execute(action: "run" | "check") {
       console.warn("Compiler crashed; restarting it.", crash);
       statusEl.textContent = "The compiler crashed; restarting it…";
       await toolchain.restart();
-      await importScalusMacros();
       result = await attempt();
     }
     if (source() === main) markDiagnostics(result.diagnostics);

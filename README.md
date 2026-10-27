@@ -19,7 +19,7 @@ Early prototype.
 
 | Works | Not yet |
 |---|---|
-| `PlutusV3.compile`, `@Compile` validators | `PlutusV3.compile` of code using `derives FromData` types from the same program – use `compileWithOptions` + `Playground.v3` (see the HTLC example) |
+| `PlutusV3.compile`, `@Compile` validators, `derives FromData/ToData` | Scalus macros that need the JVM (e.g. `derives Eq`, `fieldAsData`) |
 | `TxBuilder` draft transactions and their script contexts | Scalus tests |
 | UPLC, double-CBOR hex, script size | Formatting |
 | Evaluate with PlutusVM, budget table | Firefox and Safari not tested (needs Wasm JSPI) |
