@@ -5,16 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Scalus Playground</title>
     <meta name="description" content="Write Cardano smart contracts in Scala and compile them to Plutus in your browser." />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/icon.png" type="image/png" />
   </head>
   <body>
     <header>
-      <h1>Scalus <span>Playground</span></h1>
+      <a class="brand" href="https://scalus.org" title="scalus.org">
+        <img class="logo-for-light" src="/scalus-logo-dark.png" alt="Scalus" />
+        <img class="logo-for-dark" src="/scalus-logo-light.png" alt="Scalus" />
+      </a>
+      <span class="product">Playground</span>
+      <a id="version" class="badge" href="https://github.com/scalus3/scalus/releases" title="Scalus version used by this playground" hidden></a>
       <select id="example" aria-label="Example"></select>
       <div class="actions">
         <button id="check" title="Type-check (no run)">Check</button>
         <button id="run" class="primary" title="Ctrl/Cmd+Enter">▶ Run</button>
         <button id="share" title="Copy a link to this code (Ctrl/Cmd+S)">Share</button>
       </div>
+      <nav class="links" aria-label="Scalus">
+        <a href="https://scalus.org/docs">Documentation</a>
+        <a href="https://github.com/scalus3/scalus" title="GitHub" aria-label="GitHub">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6 0-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.5.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
+        </a>
+        <a href="https://discord.gg/B6tXmBzhTn" title="Discord" aria-label="Discord">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.6 1.3a18.4 18.4 0 0 0-5.6 0L8.6 3a19.7 19.7 0 0 0-4.9 1.5C.6 9.1-.3 13.6.1 18.1a19.9 19.9 0 0 0 6 3l1.3-2.1a12.9 12.9 0 0 1-2-1l.5-.4a14.2 14.2 0 0 0 12.2 0l.5.4c-.6.4-1.3.7-2 1l1.3 2.1a19.8 19.8 0 0 0 6-3c.5-5.2-.9-9.7-3.6-13.7ZM8 15.3c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm8 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg>
+        </a>
+      </nav>
     </header>
     <main>
       <section id="editor" aria-label="Scala source"></section>

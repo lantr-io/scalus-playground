@@ -21,6 +21,17 @@ const examples: Record<string, string> = {
   "Compile an expression": expression,
 };
 
+// Light or dark, following the system setting, as scalus.org does.
+const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+// One Dark's syntax colours on the page's own dark background (style.css --bg / --panel).
+const darkBackground = EditorView.theme(
+  { "&": { backgroundColor: "#111111" }, ".cm-gutters": { backgroundColor: "#111111" } },
+  { dark: true },
+);
+const themeFor = () => (darkScheme.matches ? [oneDark, darkBackground] : []);
+const editorTheme = new Compartment();
+const uplcTheme = new Compartment();
+
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const statusEl = $("status");
 const runButton = $<HTMLButtonElement>("run");
@@ -37,7 +48,7 @@ const editor = new EditorView({
     extensions: [
       basicSetup,
       StreamLanguage.define(scala),
-      oneDark,
+      editorTheme.of(themeFor()),
       lintGutter(),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) scheduleCheck();
@@ -70,15 +81,16 @@ function setSource(text: string) {
 
 // --- Output panes -------------------------------------------------------------
 
-const readOnly = (doc: string, language: Compartment, lang: any = []) =>
-  new EditorView({
-    parent: document.createElement("div"),
-    state: EditorState.create({
-      doc,
-      extensions: [basicSetup, oneDark, EditorState.readOnly.of(true), EditorView.lineWrapping, language.of(lang)],
-    }),
-  });
-const uplcView = readOnly("", new Compartment(), uplc);
+const uplcView = new EditorView({
+  parent: document.createElement("div"),
+  state: EditorState.create({
+    extensions: [basicSetup, uplcTheme.of(themeFor()), EditorState.readOnly.of(true), EditorView.lineWrapping, uplc],
+  }),
+});
+darkScheme.addEventListener("change", () => {
+  editor.dispatch({ effects: editorTheme.reconfigure(themeFor()) });
+  uplcView.dispatch({ effects: uplcTheme.reconfigure(themeFor()) });
+});
 $("tab-uplc").append(uplcView.dom);
 
 function setView(view: EditorView, text: string) {
@@ -184,10 +196,21 @@ async function importScalusMacros(manifestUrl: string) {
   const manifest = await (await fetch(manifestUrl, { cache: "no-store" })).json();
   const entry = manifest.classpath.find((e: { path: string }) => /\/scalus_sjs1_3-[^/]*\.jar$/.test(e.path));
   if (!entry) throw new Error("The toolchain has no Scalus jar.");
+  showScalusVersion(entry.path.match(/scalus_sjs1_3-(.+)\.jar$/)[1]);
   const bytes = new Uint8Array(await (await fetch(new URL(entry.url, manifestUrl))).arrayBuffer());
   await toolchain.importMacros("scalus-macros.zip", bytes);
 }
 const macrosReady = importScalusMacros(manifestUrl);
+
+function showScalusVersion(version: string) {
+  const badge = $<HTMLAnchorElement>("version");
+  badge.textContent = `Scalus ${version}`;
+  // Released versions are git tags; snapshot builds have no tag to point at.
+  badge.href = /^\d+\.\d+\.\d+$/.test(version)
+    ? `https://github.com/scalus3/scalus/tree/v${version}`
+    : "https://github.com/scalus3/scalus/releases";
+  badge.hidden = false;
+}
 
 toolchain.ready.then(
   async () => {
