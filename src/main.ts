@@ -4,7 +4,6 @@ import { StreamLanguage } from "@codemirror/language";
 import { scala } from "@codemirror/legacy-modes/mode/clike";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { setDiagnostics, lintGutter, type Diagnostic as CmDiagnostic } from "@codemirror/lint";
-import { keymap } from "@codemirror/view";
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 
 import { Toolchain, type Diagnostic, type Result } from "./toolchain";
@@ -87,13 +86,24 @@ const editor = new EditorView({
       EditorView.updateListener.of((update) => {
         if (update.docChanged) scheduleCheck();
       }),
-      keymap.of([
-        { key: "Mod-Enter", run: () => (run(), true) },
-        { key: "Mod-s", run: () => (share(), true) },
-      ]),
     ],
   }),
 });
+
+// Page-wide shortcuts, caught before the editor sees them: basicSetup binds Mod-Enter to
+// "insert blank line", and the shortcuts should also work when the focus is outside the editor.
+window.addEventListener(
+  "keydown",
+  (e) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+    const action = e.key === "Enter" ? run : e.key === "s" ? share : undefined;
+    if (!action) return;
+    e.preventDefault();
+    e.stopPropagation();
+    action();
+  },
+  { capture: true },
+);
 
 // Dev builds expose the editor for browser tests.
 if (import.meta.env.DEV) (window as any).__editor = editor;
