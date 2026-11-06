@@ -32,7 +32,7 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
-body { display: grid; grid-template-rows: auto 1fr auto; }
+body { display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); }
 
 header { display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 16px; border-bottom: 1px solid var(--border); }
 .brand { display: flex; align-items: center; }
@@ -61,9 +61,11 @@ button, select {
 }
 button:hover:not(:disabled), select:hover { border-color: var(--muted); }
 button:disabled { opacity: 0.5; cursor: progress; }
+button { white-space: nowrap; }
+#example { min-width: 0; flex: 0 1 auto; }
 button.primary { background: var(--primary-bg); color: var(--primary-text); border-color: var(--primary-bg); font-weight: 500; }
 
-main { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; }
 #editor { min-height: 0; overflow: hidden; border-right: 1px solid var(--border); }
 #editor .cm-editor { height: 100%; }
 .output { display: grid; grid-template-rows: auto 1fr; min-height: 0; background: var(--panel); }
@@ -90,9 +92,15 @@ tr.fail td:nth-child(2) { color: var(--fail); }
 
 footer { display: flex; align-items: center; gap: 12px; padding: 6px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
 #download { flex: 0 1 240px; height: 6px; accent-color: var(--accent); }
+.credits { margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.credits a { color: inherit; }
+.credits a:hover { color: var(--text); }
+noscript p { padding: 16px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 @media (max-width: 900px) {
-  .links, .badge { display: none; }
+  .links, .badge, .credits, .learn { display: none; }
+  header { flex-wrap: wrap; height: auto; padding: 8px 12px; row-gap: 8px; }
   main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
   #editor { border-right: none; border-bottom: 1px solid var(--border); }
 }

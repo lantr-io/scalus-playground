@@ -3,12 +3,55 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Scalus Playground</title>
-    <meta name="description" content="Write Cardano smart contracts in Scala and compile them to Plutus in your browser." />
+    <title>Scalus Playground – Cardano smart contracts in Scala 3</title>
+    <meta name="description" content="A Plutus playground for Scala 3: write Cardano smart contracts with Scalus and compile them to UPLC entirely in your browser. No install, no server." />
+    <meta name="author" content="Alexander Nemish" />
+    <link rel="canonical" href="https://play.scalus.org/" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/icon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://play.scalus.org/" />
+    <meta property="og:site_name" content="Scalus" />
+    <meta property="og:title" content="Scalus Playground – Cardano smart contracts in Scala 3" />
+    <meta property="og:description" content="Write Cardano smart contracts in Scala 3 and compile them to Plutus UPLC entirely in your browser. No install, no server." />
+    <meta property="og:image" content="https://play.scalus.org/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Scalus Playground: a Scala 3 validator in the editor and its compiled UPLC" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@lantr_io" />
+    <meta name="twitter:creator" content="@atlanter" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Scalus Playground",
+        "url": "https://play.scalus.org/",
+        "description": "Write Cardano smart contracts in Scala 3 with Scalus and compile them to Plutus UPLC in the browser.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any browser with WebAssembly GC and JSPI",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "isBasedOn": { "@type": "SoftwareSourceCode", "name": "Scalus", "url": "https://scalus.org", "programmingLanguage": "Scala" },
+        "author": { "@type": "Person", "name": "Alexander Nemish", "url": "https://x.com/atlanter", "sameAs": ["https://github.com/nau"] },
+        "publisher": { "@type": "Organization", "name": "Lantr", "url": "https://lantr.io", "sameAs": ["https://x.com/lantr_io", "https://github.com/lantr-io"] }
+      }
+    </script>
   </head>
   <body>
+    <h1 class="visually-hidden">Scalus Playground: Cardano smart contracts in Scala 3, compiled in your browser</h1>
+    <noscript>
+      <p>
+        Scalus Playground runs the Scala 3 compiler in your browser, compiled to WebAssembly, with the
+        <a href="https://scalus.org">Scalus</a> compiler plugin inside. The Scala 3 compiler on WebAssembly comes from
+        <a href="https://github.com/sjrd">Sébastien Doeraene</a> (Scala.js) and
+        <a href="https://github.com/univalence-xyz/scala3-on-wasm">Univalence</a>. Write a Cardano validator in Scala 3, compile it to
+        Plutus UPLC, and evaluate it with the Scalus PlutusVM. It needs JavaScript and a browser with WebAssembly GC and JSPI.
+      </p>
+    </noscript>
     <header>
       <a class="brand" href="https://scalus.org" title="scalus.org">
         <img class="logo-for-light" src="/scalus-logo-dark.png" alt="Scalus" />
@@ -59,7 +102,16 @@
         <div id="tab-problems" class="tab"><ul id="problems-list"></ul></div>
       </section>
     </main>
-    <footer><span id="status"></span><progress id="download" value="0" max="1" hidden></progress></footer>
+    <footer>
+      <span id="status"></span><progress id="download" value="0" max="1" hidden></progress>
+      <span class="credits">
+        Built by <a href="https://lantr.io">Lantr</a> ·
+        <a href="https://x.com/atlanter">Alexander Nemish</a> ·
+        Scala 3 on Wasm by <a href="https://github.com/sjrd">sjrd</a> (<a href="https://www.scala-js.org">Scala.js</a>) and
+        <a href="https://github.com/univalence-xyz/scala3-on-wasm">Univalence</a> ·
+        <a href="https://github.com/lantr-io/scalus-playground">Source</a>
+      </span>
+    </footer>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
