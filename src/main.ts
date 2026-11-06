@@ -255,9 +255,14 @@ function runSource(main: string): Promise<Result> {
 // Download the toolchain with visible progress, then start the compiler on the cached files.
 const downloadBar = $<HTMLProgressElement>("download");
 const mb = (bytes: number) => (bytes / 2 ** 20).toFixed(0);
-statusEl.textContent = "Loading the Scala compiler…";
+// The compiler is Scala.js compiled to WebAssembly with JS promise integration (JSPI). Without JSPI
+// it cannot start, so do not download ~65 MB for nothing.
+const supported = "Suspending" in WebAssembly;
+statusEl.textContent = supported
+  ? "Loading the Scala compiler…"
+  : "This browser cannot run the Scala compiler: it needs WebAssembly JSPI. Use a recent Chrome or Edge.";
 const toolchainDownload = toolchainFiles(manifestUrl);
-toolchainDownload
+if (supported) toolchainDownload
   .then(({ urls, sizes }) => {
     downloadBar.hidden = false;
     return prefetch(urls, sizes, ({ loaded, total }) => {
